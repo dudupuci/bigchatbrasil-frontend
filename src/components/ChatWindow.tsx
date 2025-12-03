@@ -12,8 +12,20 @@ import {
   useColorMode,
   useToast,
   Heading,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  ModalCloseButton,
+  useDisclosure,
 } from '@chakra-ui/react';
-import { ArrowBackIcon } from '@chakra-ui/icons';
+import { ArrowBackIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 
 interface Message {
   id: string;
@@ -31,9 +43,12 @@ interface ChatWindowProps {
 const ChatWindow = ({ contactName, onBack, showBackButton = false }: ChatWindowProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [editText, setEditText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { colorMode } = useColorMode();
   const toast = useToast();
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -83,6 +98,58 @@ const ChatWindow = ({ contactName, onBack, showBackButton = false }: ChatWindowP
     }
   };
 
+  const handleDeleteMessage = (messageId: string) => {
+    setMessages(messages.filter((msg) => msg.id !== messageId));
+    toast({
+      title: 'Mensagem excluída',
+      status: 'info',
+      duration: 2000,
+      isClosable: true,
+    });
+  };
+
+  const handleEditMessage = (message: Message) => {
+    setEditingMessage(message);
+    setEditText(message.text);
+    onOpen();
+  };
+
+  const handleSaveEdit = () => {
+    if (editText.trim() === '') {
+      toast({
+        title: 'Mensagem vazia',
+        description: 'A mensagem não pode estar vazia.',
+        status: 'warning',
+        duration: 2000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    setMessages(
+      messages.map((msg) =>
+        msg.id === editingMessage?.id ? { ...msg, text: editText } : msg
+      )
+    );
+
+    toast({
+      title: 'Mensagem editada',
+      status: 'success',
+      duration: 2000,
+      isClosable: true,
+    });
+
+    onClose();
+    setEditingMessage(null);
+    setEditText('');
+  };
+
+  const handleCancelEdit = () => {
+    onClose();
+    setEditingMessage(null);
+    setEditText('');
+  };
+
   return (
     <Flex direction="column" h="100%" bg={colorMode === 'dark' ? 'gray.800' : 'white'} borderRadius="lg">
       {/* Header */}
@@ -122,15 +189,33 @@ const ChatWindow = ({ contactName, onBack, showBackButton = false }: ChatWindowP
                     {message.sender === 'me' ? 'V' : contactName[0].toUpperCase()}
                   </Circle>
                   <Box>
-                    <Box
-                      bg={message.sender === 'me' ? 'blue.500' : colorMode === 'dark' ? 'gray.700' : 'gray.200'}
-                      color={message.sender === 'me' ? 'white' : 'inherit'}
-                      px={4}
-                      py={2}
-                      borderRadius="lg"
-                    >
-                      <Text>{message.text}</Text>
-                    </Box>
+                    <Menu>
+                      <MenuButton
+                        as={Box}
+                        cursor="pointer"
+                        bg={message.sender === 'me' ? 'blue.500' : colorMode === 'dark' ? 'gray.700' : 'gray.200'}
+                        color={message.sender === 'me' ? 'white' : 'inherit'}
+                        px={4}
+                        py={2}
+                        borderRadius="lg"
+                        _hover={{
+                          opacity: 0.8,
+                        }}
+                        transition="opacity 0.2s"
+                      >
+                        <Text>{message.text}</Text>
+                      </MenuButton>
+                      {message.sender === 'me' && (
+                        <MenuList>
+                          <MenuItem icon={<EditIcon />} onClick={() => handleEditMessage(message)}>
+                            Editar
+                          </MenuItem>
+                          <MenuItem icon={<DeleteIcon />} onClick={() => handleDeleteMessage(message.id)} color="red.500">
+                            Excluir
+                          </MenuItem>
+                        </MenuList>
+                      )}
+                    </Menu>
                     <Text fontSize="xs" color="gray.500" mt={1}>
                       {message.timestamp.toLocaleTimeString('pt-BR', {
                         hour: '2-digit',
@@ -160,6 +245,31 @@ const ChatWindow = ({ contactName, onBack, showBackButton = false }: ChatWindowP
           Enviar
         </Button>
       </HStack>
+
+      {/* Modal Editar Mensagem */}
+      <Modal isOpen={isOpen} onClose={handleCancelEdit}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Editar Mensagem</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Input
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              placeholder="Digite a nova mensagem..."
+              size="lg"
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={handleCancelEdit}>
+              Cancelar
+            </Button>
+            <Button colorScheme="blue" onClick={handleSaveEdit}>
+              Salvar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Flex>
   );
 };

@@ -114,7 +114,7 @@ const Login = () => {
         <VStack spacing={6} align="stretch">
           <Box textAlign="center">
             <Heading size="xl" mb={2} color="brand.500">
-              Chat Online
+              BigChatBrasil
             </Heading>
             <Text color="gray.500">
                 Conecte-se e comece a conversar!
