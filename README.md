@@ -1,6 +1,14 @@
-# Getting Started with Create React App
+# Chat Online - Sistema de Chat Simples
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Sistema de chat online desenvolvido com React, TypeScript e Chakra UI.
+
+## 🚀 Tecnologias
+
+- **React 19** - Biblioteca JavaScript para construção de interfaces
+- **TypeScript** - Superset JavaScript com tipagem estática
+- **Chakra UI v3** - Biblioteca de componentes UI moderna e acessível
+- **Emotion** - CSS-in-JS para estilização
+- **Framer Motion** - Animações suaves
 
 ## Available Scripts
 
