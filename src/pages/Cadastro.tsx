@@ -16,26 +16,36 @@ import {
     IconButton,
     useRadioGroup,
     Stack,
+    Select,
+    Textarea,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useNavigate } from 'react-router-dom';
 import AuthCard from '../components/AuthCard';
 import UserTypeCard from '../components/UserTypeCard';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/authService';
 
 type UserType = 'cliente' | 'empresa';
 
 const Cadastro = () => {
     const [nome, setNome] = useState('');
+    const [sobrenome, setSobrenome] = useState('');
+    const [sexo, setSexo] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [cpfCnpj, setCpfCnpj] = useState('');
+    const [telefone, setTelefone] = useState('');
+    const [sobre, setSobre] = useState('');
+    const [razaoSocial, setRazaoSocial] = useState('');
+    const [cnpj, setCnpj] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [userType, setUserType] = useState<UserType>('cliente');
     const { colorMode } = useColorMode();
     const toast = useToast();
     const navigate = useNavigate();
-    const { login } = useAuth();
 
     const { getRootProps, getRadioProps } = useRadioGroup({
         name: 'userType',
@@ -61,11 +71,36 @@ const Cadastro = () => {
     ];
 
     const handleCadastro = async () => {
-        if (!nome || !email || !password) {
+        // Validações básicas
+        if (userType === 'cliente') {
+            if (!nome || !sobrenome || !email || !password || !confirmPassword || !cpfCnpj || !telefone) {
+                toast({
+                    title: 'Campos obrigatórios',
+                    description: 'Por favor, preencha todos os campos obrigatórios.',
+                    status: 'warning',
+                    duration: 3000,
+                    isClosable: true,
+                });
+                return;
+            }
+        } else {
+            if (!razaoSocial || !cnpj || !email || !password || !confirmPassword || !telefone) {
+                toast({
+                    title: 'Campos obrigatórios',
+                    description: 'Por favor, preencha todos os campos obrigatórios.',
+                    status: 'warning',
+                    duration: 3000,
+                    isClosable: true,
+                });
+                return;
+            }
+        }
+
+        if (password !== confirmPassword) {
             toast({
-                title: 'Campos obrigatórios',
-                description: 'Por favor, preencha todos os campos.',
-                status: 'warning',
+                title: 'Senhas não conferem',
+                description: 'A senha e a confirmação devem ser iguais.',
+                status: 'error',
                 duration: 3000,
                 isClosable: true,
             });
@@ -73,27 +108,50 @@ const Cadastro = () => {
         }
 
         setIsLoading(true);
-        // Simulação de cadastro - aqui você conectaria com sua API
-        setTimeout(() => {
-            setIsLoading(false);
-            
-            login({
-                id: Date.now().toString(),
-                nome: nome,
-                email: email,
-                tipo: userType,
-            });
-            
+
+        try {
+            if (userType === 'cliente') {
+                await authService.registrarCliente({
+                    nome,
+                    sobrenome,
+                    sexo,
+                    email,
+                    cpf_cnpj: cpfCnpj,
+                    senha: password,
+                    confirmacao_senha: confirmPassword,
+                    telefone,
+                    sobre,
+                });
+            } else {
+                await authService.registrarEmpresa({
+                    razao_social: razaoSocial,
+                    cnpj,
+                    telefone,
+                    email,
+                    senha: password,
+                    confirmacao_senha: confirmPassword,
+                });
+            }
+
             toast({
                 title: 'Cadastro realizado!',
-                description: `Bem-vindo(a), ${nome}! Você se cadastrou como ${userType === 'cliente' ? 'Cliente' : 'Empresa'
-                    }.`,
+                description: `Bem-vindo(a)! Agora você pode fazer login.`,
                 status: 'success',
-                duration: 3000,
+                duration: 4000,
                 isClosable: true,
             });
-            navigate('/home');
-        }, 1000);
+            navigate('/login');
+        } catch (error) {
+            toast({
+                title: 'Erro no cadastro',
+                description: error instanceof Error ? error.message : 'Erro ao realizar cadastro',
+                status: 'error',
+                duration: 4000,
+                isClosable: true,
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -137,31 +195,137 @@ const Cadastro = () => {
                     </Box>
 
                     <VStack spacing={4}>
-                        <FormControl>
-                            <FormLabel>Nome {userType === 'empresa' ? 'da Empresa' : 'Completo'}</FormLabel>
-                            <Input
-                                type="text"
-                                placeholder={
-                                    userType === 'empresa' ? 'Nome da sua empresa' : 'Seu nome completo'
-                                }
-                                value={nome}
-                                onChange={(e) => setNome(e.target.value)}
-                                size="lg"
-                            />
-                        </FormControl>
+                        {userType === 'cliente' ? (
+                            <>
+                                <FormControl isRequired>
+                                    <FormLabel>Nome</FormLabel>
+                                    <Input
+                                        type="text"
+                                        placeholder="Seu nome"
+                                        value={nome}
+                                        onChange={(e) => setNome(e.target.value)}
+                                        size="lg"
+                                    />
+                                </FormControl>
 
-                        <FormControl>
-                            <FormLabel>Email</FormLabel>
-                            <Input
-                                type="email"
-                                placeholder="seu@email.com"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                size="lg"
-                            />
-                        </FormControl>
+                                <FormControl isRequired>
+                                    <FormLabel>Sobrenome</FormLabel>
+                                    <Input
+                                        type="text"
+                                        placeholder="Seu sobrenome"
+                                        value={sobrenome}
+                                        onChange={(e) => setSobrenome(e.target.value)}
+                                        size="lg"
+                                    />
+                                </FormControl>
 
-                        <FormControl>
+                                <FormControl isRequired>
+                                    <FormLabel>Sexo</FormLabel>
+                                    <Select
+                                        placeholder="Selecione"
+                                        value={sexo}
+                                        onChange={(e) => setSexo(e.target.value)}
+                                        size="lg"
+                                    >
+                                        <option value="MASCULINO">Masculino</option>
+                                        <option value="FEMININO">Feminino</option>
+                                        <option value="OUTRO">Outro</option>
+                                    </Select>
+                                </FormControl>
+
+                                <FormControl isRequired>
+                                    <FormLabel>CPF/CNPJ</FormLabel>
+                                    <Input
+                                        type="text"
+                                        placeholder="000.000.000-00"
+                                        value={cpfCnpj}
+                                        onChange={(e) => setCpfCnpj(e.target.value)}
+                                        size="lg"
+                                    />
+                                </FormControl>
+
+                                <FormControl isRequired>
+                                    <FormLabel>Email</FormLabel>
+                                    <Input
+                                        type="email"
+                                        placeholder="seu@email.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        size="lg"
+                                    />
+                                </FormControl>
+
+                                <FormControl isRequired>
+                                    <FormLabel>Telefone</FormLabel>
+                                    <Input
+                                        type="tel"
+                                        placeholder="(00) 00000-0000"
+                                        value={telefone}
+                                        onChange={(e) => setTelefone(e.target.value)}
+                                        size="lg"
+                                    />
+                                </FormControl>
+
+                                <FormControl>
+                                    <FormLabel>Sobre você</FormLabel>
+                                    <Textarea
+                                        placeholder="Conte um pouco sobre você..."
+                                        value={sobre}
+                                        onChange={(e) => setSobre(e.target.value)}
+                                        size="lg"
+                                        rows={3}
+                                    />
+                                </FormControl>
+                            </>
+                        ) : (
+                            <>
+                                <FormControl isRequired>
+                                    <FormLabel>Razão Social</FormLabel>
+                                    <Input
+                                        type="text"
+                                        placeholder="Nome da sua empresa"
+                                        value={razaoSocial}
+                                        onChange={(e) => setRazaoSocial(e.target.value)}
+                                        size="lg"
+                                    />
+                                </FormControl>
+
+                                <FormControl isRequired>
+                                    <FormLabel>CNPJ</FormLabel>
+                                    <Input
+                                        type="text"
+                                        placeholder="00.000.000/0000-00"
+                                        value={cnpj}
+                                        onChange={(e) => setCnpj(e.target.value)}
+                                        size="lg"
+                                    />
+                                </FormControl>
+
+                                <FormControl isRequired>
+                                    <FormLabel>Email</FormLabel>
+                                    <Input
+                                        type="email"
+                                        placeholder="contato@empresa.com"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        size="lg"
+                                    />
+                                </FormControl>
+
+                                <FormControl isRequired>
+                                    <FormLabel>Telefone</FormLabel>
+                                    <Input
+                                        type="tel"
+                                        placeholder="(00) 0000-0000"
+                                        value={telefone}
+                                        onChange={(e) => setTelefone(e.target.value)}
+                                        size="lg"
+                                    />
+                                </FormControl>
+                            </>
+                        )}
+
+                        <FormControl isRequired>
                             <FormLabel>Senha</FormLabel>
                             <InputGroup size="lg">
                                 <Input
@@ -182,14 +346,14 @@ const Cadastro = () => {
                             </InputGroup>
                         </FormControl>
 
-                        <FormControl>
+                        <FormControl isRequired>
                             <FormLabel>Confirme sua Senha</FormLabel>
                             <InputGroup size="lg">
                                 <Input
                                     type={showPassword ? 'text' : 'password'}
                                     placeholder="••••••••"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
                                 />
                                 <InputRightElement>
                                     <IconButton

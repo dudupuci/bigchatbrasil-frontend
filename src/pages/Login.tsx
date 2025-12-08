@@ -14,15 +14,21 @@ import {
   InputGroup,
   InputRightElement,
   IconButton,
+  Radio,
+  RadioGroup,
+  Stack,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { useNavigate } from 'react-router-dom';
 import AuthCard from '../components/AuthCard';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/authService';
+import { TipoUsuario } from '../types';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [tipoUsuario, setTipoUsuario] = useState<TipoUsuario>(TipoUsuario.CLIENTE);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { colorMode } = useColorMode();
@@ -43,19 +49,23 @@ const Login = () => {
     }
 
     setIsLoading(true);
-    // Simulação de login - aqui você conectaria com sua API
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      // Simular usuário baseado no email
-      const userType = email.includes('empresa') ? 'empresa' : 'cliente';
-      
-      login({
-        id: '1',
+    
+    try {
+      const response = await authService.login({
+        email,
+        senha: password,
+        tipo: tipoUsuario,
+      });
+
+      // Criar objeto de usuário temporário (você pode buscar do backend depois)
+      const user = {
+        id: response.sessionId, // Usando sessionId como ID temporário
         nome: email.split('@')[0],
         email: email,
-        tipo: userType,
-      });
+        tipo: tipoUsuario === TipoUsuario.CLIENTE ? 'cliente' as const : 'empresa' as const,
+      };
+
+      login(user, response.sessionId);
       
       toast({
         title: 'Login realizado!',
@@ -65,35 +75,20 @@ const Login = () => {
         isClosable: true,
       });
       navigate('/home');
-    }, 1500);
+    } catch (error) {
+      toast({
+        title: 'Erro no login',
+        description: error instanceof Error ? error.message : 'Credenciais inválidas',
+        status: 'error',
+        duration: 4000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleMockLogin = (tipo: 'cliente' | 'empresa') => {
-    const mockUser = tipo === 'cliente' 
-      ? {
-          id: '1',
-          nome: 'João Cliente',
-          email: 'cliente@teste.com',
-          tipo: 'cliente' as const,
-        }
-      : {
-          id: '2',
-          nome: 'Tech Solutions',
-          email: 'empresa@teste.com',
-          tipo: 'empresa' as const,
-        };
 
-    login(mockUser);
-    
-    toast({
-      title: 'Login realizado!',
-      description: `Bem-vindo como ${tipo}!`,
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
-    navigate('/home');
-  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -135,6 +130,23 @@ const Login = () => {
             </FormControl>
 
             <FormControl>
+              <FormLabel>Tipo de Usuário</FormLabel>
+              <RadioGroup
+                value={tipoUsuario}
+                onChange={(value) => setTipoUsuario(value as TipoUsuario)}
+              >
+                <Stack direction="row" spacing={4}>
+                  <Radio value={TipoUsuario.CLIENTE} colorScheme="brand">
+                    Cliente
+                  </Radio>
+                  <Radio value={TipoUsuario.EMPRESA} colorScheme="brand">
+                    Empresa
+                  </Radio>
+                </Stack>
+              </RadioGroup>
+            </FormControl>
+
+            <FormControl>
               <FormLabel>Senha</FormLabel>
               <InputGroup size="lg">
                 <Input
@@ -165,32 +177,6 @@ const Login = () => {
             >
               Entrar
             </Button>
-
-            <Box pt={2} w="full">
-              <Text fontSize="sm" color="gray.500" textAlign="center" mb={2}>
-                Acesso rápido para testes:
-              </Text>
-              <VStack spacing={2}>
-                <Button
-                  size="sm"
-                  width="full"
-                  variant="outline"
-                  colorScheme="blue"
-                  onClick={() => handleMockLogin('cliente')}
-                >
-                  Entrar como Cliente
-                </Button>
-                <Button
-                  size="sm"
-                  width="full"
-                  variant="outline"
-                  colorScheme="green"
-                  onClick={() => handleMockLogin('empresa')}
-                >
-                  Entrar como Empresa
-                </Button>
-              </VStack>
-            </Box>
           </VStack>
 
           <Box textAlign="center">
