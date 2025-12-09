@@ -37,7 +37,6 @@ interface ChatWindowProps {
   conversaId?: string;
   onBack?: () => void;
   showBackButton?: boolean;
-  onConversaCreated?: (conversaId: string) => void;
 }
 
 const ChatWindow = ({
@@ -47,12 +46,12 @@ const ChatWindow = ({
   conversaId,
   onBack,
   showBackButton = false,
-  onConversaCreated,
 }: ChatWindowProps) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -71,11 +70,16 @@ const ChatWindow = ({
   const carregarMensagens = useCallback(async () => {
     if (!conversaId) {
       setMessages([]);
+      setIsInitialLoad(false);
       return;
     }
 
     try {
-      setIsLoading(true);
+      // Mostra loading apenas no carregamento inicial
+      if (isInitialLoad) {
+        setIsLoading(true);
+      }
+
       const response = await listarMensagensDaConversa(conversaId);
 
       const mensagensFormatadas: Message[] = response.mensagens.map((msg: MensagemAPI) => ({
@@ -85,28 +89,50 @@ const ChatWindow = ({
         timestamp: new Date(msg.momentoEnvio),
       }));
 
-      setMessages(mensagensFormatadas);
+      // Atualiza apenas se houver mudanças (evita re-render desnecessário)
+      setMessages(prevMessages => {
+        if (mensagensFormatadas.length !== prevMessages.length) {
+          return mensagensFormatadas;
+        }
+
+        // Verifica se a última mensagem é diferente
+        const lastPrev = prevMessages[prevMessages.length - 1];
+        const lastNew = mensagensFormatadas[mensagensFormatadas.length - 1];
+
+        if (!lastPrev || !lastNew || lastPrev.id !== lastNew.id) {
+          return mensagensFormatadas;
+        }
+
+        return prevMessages; // Não mudou, mantém estado anterior
+      });
+
+      setIsInitialLoad(false);
     } catch (error: any) {
       console.error('Erro ao carregar mensagens:', error);
-      // Remove toast para evitar re-renders no polling
+      setIsInitialLoad(false);
     } finally {
       setIsLoading(false);
     }
-  }, [conversaId, user?.id]); // Remove toast da dependência
+  }, [conversaId, user?.id, isInitialLoad]);
 
   useEffect(() => {
+    // Reset do carregamento inicial quando muda de conversa
+    setIsInitialLoad(true);
+    setMessages([]);
+
     carregarMensagens();
 
-    // Atualiza mensagens a cada 5 segundos se houver conversaId e usuário não está digitando
+    // Atualiza mensagens a cada 10 segundos (reduzido para evitar sobrecarga)
+    // Só atualiza se houver conversaId e usuário não está digitando
     if (conversaId) {
       const interval = setInterval(() => {
-        if (!isTyping) {
+        if (!isTyping && !isSending) {
           carregarMensagens();
         }
-      }, 5000);
+      }, 10000); // Aumentado de 5s para 10s
       return () => clearInterval(interval);
     }
-  }, [conversaId, carregarMensagens, isTyping]);
+  }, [conversaId, carregarMensagens, isTyping, isSending]);
 
   const handleSendMessage = async () => {
     if (inputValue.trim() === '') {
@@ -132,33 +158,20 @@ const ChatWindow = ({
         prioridade: 'NENHUMA',
       };
 
-      const response = await enviarMensagem(dados);
+      await enviarMensagem(dados);
 
-      // Se é a primeira mensagem, atualiza o conversaId
-      if (!conversaId && response.conversaId && onConversaCreated) {
-        onConversaCreated(response.conversaId);
-      }
-
-      // Adiciona a mensagem localmente
-      const novaMensagem: Message = {
-        id: response.id || Date.now(),
-        text: inputValue,
-        sender: 'me',
-        timestamp: new Date(),
-      };
-
-      setMessages([...messages, novaMensagem]);
       setInputValue('');
 
       toast({
         title: 'Mensagem enviada!',
         status: 'success',
-        duration: 2000,
+        duration: 1000,
         isClosable: true,
       });
 
-      // Recarrega mensagens após um pequeno delay
-      setTimeout(carregarMensagens, 500);
+      // Aguarda um pouco e recarrega uma única vez
+      await new Promise(resolve => setTimeout(resolve, 500));
+      carregarMensagens();
 
     } catch (error: any) {
       console.error('Erro ao enviar mensagem:', error);

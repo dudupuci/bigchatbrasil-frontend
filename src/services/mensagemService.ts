@@ -37,6 +37,22 @@ export interface EnviarMensagemRequest {
 }
 
 /**
+ * Cria uma conversa entre o usuário logado e outro usuário
+ */
+export const criarConversa = async (destinatarioId: number, tipoDestinatario: 'CLIENTE' | 'EMPRESA'): Promise<{ conversaId: string; message: string }> => {
+  return apiRequest('/mensagens/conversas', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      destinatarioId,
+      tipoDestinatario,
+    }),
+  });
+};
+
+/**
  * Busca usuário (Cliente ou Empresa) por email
  */
 export const buscarUsuarioPorEmail = async (email: string): Promise<Usuario> => {

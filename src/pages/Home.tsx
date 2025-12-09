@@ -28,6 +28,7 @@ import SearchBar from '../components/SearchBar';
 import {
   buscarUsuarioPorEmail,
   listarConversas,
+  criarConversa,
   Conversa as ConversaAPI,
   Usuario,
 } from '../services/mensagemService';
@@ -63,7 +64,6 @@ const Home = () => {
   // Carrega as conversas do backend
   const carregarConversas = useCallback(async () => {
     try {
-      setIsLoading(true);
       const response = await listarConversas();
 
       const conversasFormatadas: Contact[] = response.conversas.map((conv: ConversaAPI) => ({
@@ -71,20 +71,17 @@ const Home = () => {
         idNumerico: conv.outroUsuarioId,
         tipo: conv.outroUsuarioTipo,
         nome: conv.outroUsuarioNome,
-        email: '', // Email não vem na listagem de conversas
+        email: '',
         ultimaMensagem: conv.ultimaMensagem,
         timestamp: formatarDataHora(conv.ultimaMensagemDataHora),
         naoLidas: conv.mensagensNaoLidas,
-        isOnline: false, // Não temos status de online ainda
+        isOnline: false,
         conversaId: conv.conversaId,
       }));
 
       setContacts(conversasFormatadas);
     } catch (error: any) {
       console.error('Erro ao carregar conversas:', error);
-      // Remove toast para evitar re-renders no polling
-    } finally {
-      setIsLoading(false);
     }
   }, []); // Remove todas as dependências para evitar re-renders
 
@@ -117,7 +114,17 @@ const Home = () => {
     // Atualiza a lista a cada 10 segundos (polling reduzido para evitar travamento)
     const interval = setInterval(carregarConversas, 10000);
 
-    return () => clearInterval(interval);
+    // Recarrega conversas quando a janela volta ao foco
+    const handleFocus = () => {
+      carregarConversas();
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [isAuthenticated, navigate, carregarConversas]);
 
   useEffect(() => {
@@ -172,8 +179,10 @@ const Home = () => {
         return;
       }
 
-      // Verifica se já existe uma conversa com esse usuário
-      const conversaExistente = contacts.find(c => c.idNumerico === usuario.id);
+      // Verifica se já existe uma conversa com esse usuário (considera ID e tipo)
+      const conversaExistente = contacts.find(c =>
+        c.idNumerico === usuario.id && c.tipo === usuario.tipo
+      );
       if (conversaExistente) {
         toast({
           title: 'Conversa já existe',
@@ -183,28 +192,34 @@ const Home = () => {
           isClosable: true,
         });
         setSelectedContact(conversaExistente);
+        setShowChatOnMobile(true);
         onClose();
         return;
       }
 
-      // Cria um novo contato (a conversa será criada ao enviar a primeira mensagem)
+      // Cria a conversa no backend (gera conversaId)
+      const conversaResponse = await criarConversa(usuario.id, usuario.tipo);
+
+      // Cria o novo contato com conversaId já definido
       const newContact: Contact = {
-        id: `temp-${Date.now()}`, // ID temporário até criar a conversa
+        id: conversaResponse.conversaId,
         idNumerico: usuario.id,
         tipo: usuario.tipo,
         nome: usuario.nome,
         email: usuario.email,
         isOnline: false,
+        conversaId: conversaResponse.conversaId,
       };
 
-      setContacts([newContact, ...contacts]);
+      setContacts(prevContacts => [newContact, ...prevContacts]);
       setSelectedContact(newContact);
       setNewContactEmail('');
+      setShowChatOnMobile(true);
       onClose();
 
       toast({
-        title: 'Contato adicionado!',
-        description: `${usuario.nome} foi adicionado. Envie uma mensagem para iniciar a conversa.`,
+        title: 'Conversa iniciada!',
+        description: `Conversa com ${usuario.nome} criada. Envie sua primeira mensagem!`,
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -293,15 +308,6 @@ const Home = () => {
               conversaId={selectedContact.conversaId}
               onBack={handleBackToList}
               showBackButton={true}
-              onConversaCreated={(novoConversaId) => {
-                // Atualiza o contato com o conversaId criado
-                setContacts(contacts.map(c =>
-                  c.id === selectedContact.id
-                    ? { ...c, id: novoConversaId, conversaId: novoConversaId }
-                    : c
-                ));
-                setSelectedContact({ ...selectedContact, id: novoConversaId, conversaId: novoConversaId });
-              }}
             />
           ) : (
             <Box
