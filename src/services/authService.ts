@@ -69,7 +69,7 @@ export const getAuthHeaders = (): HeadersInit => {
   if (sessionId) {
     return {
       'Content-Type': 'application/json',
-      'Authorization': sessionId, // ou 'X-Session-Id': sessionId, dependendo de como seu backend espera
+      'X-Session-Id': sessionId,
     };
   }
   return {

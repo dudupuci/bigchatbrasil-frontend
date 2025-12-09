@@ -57,12 +57,12 @@ const Login = () => {
         tipo: tipoUsuario,
       });
 
-      // Criar objeto de usuário temporário (você pode buscar do backend depois)
+      // Criar objeto de usuário com os dados retornados pelo backend
       const user = {
-        id: response.sessionId, // Usando sessionId como ID temporário
-        nome: email.split('@')[0],
-        email: email,
-        tipo: tipoUsuario === TipoUsuario.CLIENTE ? 'cliente' as const : 'empresa' as const,
+        id: response.id,
+        nome: response.nome,
+        email: response.email,
+        tipo: response.tipo,
       };
 
       login(user, response.sessionId);

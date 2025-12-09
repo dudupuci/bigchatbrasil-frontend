@@ -11,13 +11,17 @@ export interface LoginRequest {
 
 export interface AuthApiResponse {
   sessionId: string;
+  id: number;
+  nome: string;
+  email: string;
+  tipo: 'CLIENTE' | 'EMPRESA';
 }
 
 export interface User {
-  id: string;
+  id: number;
   nome: string;
   email: string;
-  tipo: 'cliente' | 'empresa';
+  tipo: 'CLIENTE' | 'EMPRESA';
 }
 
 export interface CriarClienteRequest {

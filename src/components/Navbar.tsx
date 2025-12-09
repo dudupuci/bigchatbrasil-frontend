@@ -62,7 +62,7 @@ const Navbar = () => {
                     {user?.nome}
                   </Text>
                   <Text fontSize="xs" color="gray.500">
-                    {user?.tipo === 'cliente' ? 'Cliente' : 'Empresa'}
+                    {user?.tipo === 'CLIENTE' ? 'Cliente' : 'Empresa'}
                   </Text>
                 </VStack>
               </HStack>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Grid,
@@ -25,15 +25,24 @@ import Navbar from '../components/Navbar';
 import ChatListItem from '../components/ChatListItem';
 import ChatWindow from '../components/ChatWindow';
 import SearchBar from '../components/SearchBar';
+import {
+  buscarUsuarioPorEmail,
+  listarConversas,
+  Conversa as ConversaAPI,
+  Usuario,
+} from '../services/mensagemService';
 
 interface Contact {
   id: string;
+  idNumerico: number;
+  tipo: 'CLIENTE' | 'EMPRESA';
   nome: string;
   email: string;
   ultimaMensagem?: string;
   timestamp?: string;
   naoLidas?: number;
   isOnline?: boolean;
+  conversaId?: string;
 }
 
 const Home = () => {
@@ -49,6 +58,52 @@ const Home = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [newContactEmail, setNewContactEmail] = useState('');
   const [showChatOnMobile, setShowChatOnMobile] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Carrega as conversas do backend
+  const carregarConversas = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await listarConversas();
+
+      const conversasFormatadas: Contact[] = response.conversas.map((conv: ConversaAPI) => ({
+        id: conv.conversaId,
+        idNumerico: conv.outroUsuarioId,
+        tipo: conv.outroUsuarioTipo,
+        nome: conv.outroUsuarioNome,
+        email: '', // Email não vem na listagem de conversas
+        ultimaMensagem: conv.ultimaMensagem,
+        timestamp: formatarDataHora(conv.ultimaMensagemDataHora),
+        naoLidas: conv.mensagensNaoLidas,
+        isOnline: false, // Não temos status de online ainda
+        conversaId: conv.conversaId,
+      }));
+
+      setContacts(conversasFormatadas);
+    } catch (error: any) {
+      console.error('Erro ao carregar conversas:', error);
+      // Remove toast para evitar re-renders no polling
+    } finally {
+      setIsLoading(false);
+    }
+  }, []); // Remove todas as dependências para evitar re-renders
+
+  const formatarDataHora = (dataHora: string): string => {
+    const data = new Date(dataHora);
+    const agora = new Date();
+    const diffMs = agora.getTime() - data.getTime();
+    const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDias === 0) {
+      return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDias === 1) {
+      return 'Ontem';
+    } else if (diffDias < 7) {
+      return `${diffDias}d atrás`;
+    } else {
+      return data.toLocaleDateString('pt-BR');
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -56,69 +111,14 @@ const Home = () => {
       return;
     }
 
-    // Simular dados de contatos baseado no tipo de usuário
-    if (user?.tipo === 'cliente') {
-      setContacts([
-        {
-          id: '1',
-          nome: 'Tech Solutions LTDA',
-          email: 'contato@techsolutions.com',
-          ultimaMensagem: 'Olá! Como podemos ajudar?',
-          timestamp: '10:30',
-          naoLidas: 2,
-          isOnline: true,
-        },
-        {
-          id: '2',
-          nome: 'Mega Store',
-          email: 'atendimento@megastore.com',
-          ultimaMensagem: 'Produto disponível em estoque',
-          timestamp: 'Ontem',
-          naoLidas: 0,
-          isOnline: false,
-        },
-        {
-          id: '3',
-          nome: 'Fast Delivery',
-          email: 'suporte@fastdelivery.com',
-          ultimaMensagem: 'Seu pedido foi enviado',
-          timestamp: '2d atrás',
-          naoLidas: 1,
-          isOnline: true,
-        },
-      ]);
-    } else {
-      setContacts([
-        {
-          id: '1',
-          nome: 'João Silva',
-          email: 'joao@email.com',
-          ultimaMensagem: 'Qual o prazo de entrega?',
-          timestamp: '11:45',
-          naoLidas: 1,
-          isOnline: true,
-        },
-        {
-          id: '2',
-          nome: 'Maria Santos',
-          email: 'maria@email.com',
-          ultimaMensagem: 'Obrigada pelo atendimento!',
-          timestamp: 'Ontem',
-          naoLidas: 0,
-          isOnline: false,
-        },
-        {
-          id: '3',
-          nome: 'Pedro Costa',
-          email: 'pedro@email.com',
-          ultimaMensagem: 'Gostaria de um orçamento',
-          timestamp: '2d atrás',
-          naoLidas: 3,
-          isOnline: true,
-        },
-      ]);
-    }
-  }, [isAuthenticated, navigate, user]);
+    // Carrega conversas ao montar o componente
+    carregarConversas();
+
+    // Atualiza a lista a cada 10 segundos (polling reduzido para evitar travamento)
+    const interval = setInterval(carregarConversas, 10000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, navigate, carregarConversas]);
 
   useEffect(() => {
     if (searchTerm.trim() === '') {
@@ -142,7 +142,7 @@ const Home = () => {
     setSelectedContact(null);
   };
 
-  const handleAddContact = () => {
+  const handleAddContact = async () => {
     if (!newContactEmail.trim()) {
       toast({
         title: 'Email obrigatório',
@@ -154,25 +154,74 @@ const Home = () => {
       return;
     }
 
-    // Simular adição de contato
-    const newContact: Contact = {
-      id: Date.now().toString(),
-      nome: newContactEmail.split('@')[0],
-      email: newContactEmail,
-      isOnline: false,
-    };
+    try {
+      setIsLoading(true);
 
-    setContacts([...contacts, newContact]);
-    setNewContactEmail('');
-    onClose();
+      // Busca o usuário pelo email
+      const usuario: Usuario = await buscarUsuarioPorEmail(newContactEmail);
 
-    toast({
-      title: 'Contato adicionado!',
-      description: `${newContact.nome} foi adicionado à sua lista.`,
-      status: 'success',
-      duration: 3000,
-      isClosable: true,
-    });
+      // Verifica se não está tentando adicionar a si mesmo
+      if (usuario.id === user?.id && usuario.tipo === user?.tipo) {
+        toast({
+          title: 'Erro',
+          description: 'Você não pode iniciar uma conversa consigo mesmo.',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      // Verifica se já existe uma conversa com esse usuário
+      const conversaExistente = contacts.find(c => c.idNumerico === usuario.id);
+      if (conversaExistente) {
+        toast({
+          title: 'Conversa já existe',
+          description: `Você já tem uma conversa com ${usuario.nome}.`,
+          status: 'info',
+          duration: 3000,
+          isClosable: true,
+        });
+        setSelectedContact(conversaExistente);
+        onClose();
+        return;
+      }
+
+      // Cria um novo contato (a conversa será criada ao enviar a primeira mensagem)
+      const newContact: Contact = {
+        id: `temp-${Date.now()}`, // ID temporário até criar a conversa
+        idNumerico: usuario.id,
+        tipo: usuario.tipo,
+        nome: usuario.nome,
+        email: usuario.email,
+        isOnline: false,
+      };
+
+      setContacts([newContact, ...contacts]);
+      setSelectedContact(newContact);
+      setNewContactEmail('');
+      onClose();
+
+      toast({
+        title: 'Contato adicionado!',
+        description: `${usuario.nome} foi adicionado. Envie uma mensagem para iniciar a conversa.`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+    } catch (error: any) {
+      console.error('Erro ao buscar usuário:', error);
+      toast({
+        title: 'Usuário não encontrado',
+        description: error.message || 'Não foi possível encontrar um usuário com este email.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -194,10 +243,10 @@ const Home = () => {
           <VStack h="100%" spacing={0} align="stretch">
             <Box p={4} borderBottom="1px" borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}>
               <Heading size="md" mb={4}>
-                {user?.tipo === 'cliente' ? 'Empresas' : 'Clientes'}
+                {user?.tipo === 'CLIENTE' ? 'Empresas' : 'Clientes'}
               </Heading>
               <SearchBar
-                placeholder={user?.tipo === 'cliente' ? 'Buscar empresas...' : 'Buscar clientes...'}
+                placeholder={user?.tipo === 'CLIENTE' ? 'Buscar empresas...' : 'Buscar clientes...'}
                 value={searchTerm}
                 onChange={setSearchTerm}
               />
@@ -209,7 +258,7 @@ const Home = () => {
                   <Text color="gray.500">
                     {searchTerm
                       ? 'Nenhum contato encontrado'
-                      : user?.tipo === 'cliente'
+                      : user?.tipo === 'CLIENTE'
                       ? 'Nenhuma empresa na sua lista ainda'
                       : 'Nenhum cliente na sua lista ainda'}
                   </Text>
@@ -228,7 +277,7 @@ const Home = () => {
 
             <Box p={4} borderTop="1px" borderColor={colorMode === 'dark' ? 'gray.600' : 'gray.200'}>
               <Button leftIcon={<AddIcon />} colorScheme="blue" w="100%" onClick={onOpen}>
-                {user?.tipo === 'cliente' ? 'Adicionar Empresa' : 'Adicionar Cliente'}
+                {user?.tipo === 'CLIENTE' ? 'Adicionar Empresa' : 'Adicionar Cliente'}
               </Button>
             </Box>
           </VStack>
@@ -239,8 +288,20 @@ const Home = () => {
           {selectedContact ? (
             <ChatWindow
               contactName={selectedContact.nome}
+              contactId={selectedContact.idNumerico}
+              contactType={selectedContact.tipo}
+              conversaId={selectedContact.conversaId}
               onBack={handleBackToList}
               showBackButton={true}
+              onConversaCreated={(novoConversaId) => {
+                // Atualiza o contato com o conversaId criado
+                setContacts(contacts.map(c =>
+                  c.id === selectedContact.id
+                    ? { ...c, id: novoConversaId, conversaId: novoConversaId }
+                    : c
+                ));
+                setSelectedContact({ ...selectedContact, id: novoConversaId, conversaId: novoConversaId });
+              }}
             />
           ) : (
             <Box
@@ -252,7 +313,7 @@ const Home = () => {
             >
               <VStack spacing={4}>
                 <Text fontSize="xl" color="gray.500">
-                  Selecione {user?.tipo === 'cliente' ? 'uma empresa' : 'um cliente'} para começar a conversar
+                  Selecione {user?.tipo === 'CLIENTE' ? 'uma empresa' : 'um cliente'} para começar a conversar
                 </Text>
               </VStack>
             </Box>
@@ -265,18 +326,25 @@ const Home = () => {
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>
-            {user?.tipo === 'cliente' ? 'Adicionar Nova Empresa' : 'Adicionar Novo Cliente'}
+            {user?.tipo === 'CLIENTE' ? 'Adicionar Nova Empresa' : 'Adicionar Novo Cliente'}
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
             <VStack spacing={4}>
               <Input
-                placeholder={user?.tipo === 'cliente' ? 'Email da empresa' : 'Email do cliente'}
+                placeholder={user?.tipo === 'CLIENTE' ? 'Email da empresa' : 'Email do cliente'}
                 value={newContactEmail}
                 onChange={(e) => setNewContactEmail(e.target.value)}
                 type="email"
+                isDisabled={isLoading}
               />
-              <Button colorScheme="blue" w="100%" onClick={handleAddContact}>
+              <Button
+                colorScheme="blue"
+                w="100%"
+                onClick={handleAddContact}
+                isLoading={isLoading}
+                loadingText="Buscando..."
+              >
                 Adicionar
               </Button>
             </VStack>
