@@ -82,13 +82,19 @@ const ChatWindow = ({
       console.log('📥 Carregando mensagens da conversa:', conversaId);
       const response = await listarMensagensDaConversa(conversaId);
       console.log('✅ Mensagens recebidas:', response.mensagens.length);
+      console.log('👤 Usuário logado ID:', user?.id, 'Tipo:', user?.tipo);
 
-      const mensagensFormatadas: Message[] = response.mensagens.map((msg: MensagemAPI) => ({
-        id: msg.id,
-        text: msg.conteudo,
-        sender: msg.remetenteId === user?.id ? 'me' : 'other',
-        timestamp: new Date(msg.momentoEnvio),
-      }));
+      const mensagensFormatadas: Message[] = response.mensagens.map((msg: MensagemAPI) => {
+        const isMine = msg.remetenteId === user?.id;
+        console.log(`📩 Mensagem ID ${msg.id}: remetenteId=${msg.remetenteId}, destinatarioId=${msg.destinatarioId}, isMine=${isMine}`);
+
+        return {
+          id: msg.id,
+          text: msg.conteudo,
+          sender: isMine ? 'me' : 'other',
+          timestamp: new Date(msg.momentoEnvio),
+        };
+      });
 
       console.log('📝 Mensagens formatadas:', mensagensFormatadas);
       setMessages(mensagensFormatadas);
