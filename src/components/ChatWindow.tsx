@@ -66,21 +66,22 @@ const ChatWindow = ({
     scrollToBottom();
   }, [messages]);
 
-  // Carrega mensagens se já existir conversaId
+  // Carrega mensagens da conversa
   const carregarMensagens = useCallback(async () => {
     if (!conversaId) {
+      console.log('⚠️ Sem conversaId, limpando mensagens');
       setMessages([]);
-      setIsInitialLoad(false);
       return;
     }
 
     try {
-      // Mostra loading apenas no carregamento inicial
       if (isInitialLoad) {
         setIsLoading(true);
       }
 
+      console.log('📥 Carregando mensagens da conversa:', conversaId);
       const response = await listarMensagensDaConversa(conversaId);
+      console.log('✅ Mensagens recebidas:', response.mensagens.length);
 
       const mensagensFormatadas: Message[] = response.mensagens.map((msg: MensagemAPI) => ({
         id: msg.id,
@@ -89,49 +90,39 @@ const ChatWindow = ({
         timestamp: new Date(msg.momentoEnvio),
       }));
 
-      // Atualiza apenas se houver mudanças (evita re-render desnecessário)
-      setMessages(prevMessages => {
-        if (mensagensFormatadas.length !== prevMessages.length) {
-          return mensagensFormatadas;
-        }
-
-        // Verifica se a última mensagem é diferente
-        const lastPrev = prevMessages[prevMessages.length - 1];
-        const lastNew = mensagensFormatadas[mensagensFormatadas.length - 1];
-
-        if (!lastPrev || !lastNew || lastPrev.id !== lastNew.id) {
-          return mensagensFormatadas;
-        }
-
-        return prevMessages; // Não mudou, mantém estado anterior
-      });
-
+      console.log('📝 Mensagens formatadas:', mensagensFormatadas);
+      setMessages(mensagensFormatadas);
       setIsInitialLoad(false);
+
     } catch (error: any) {
-      console.error('Erro ao carregar mensagens:', error);
+      console.error('❌ Erro ao carregar mensagens:', error);
       setIsInitialLoad(false);
     } finally {
       setIsLoading(false);
     }
   }, [conversaId, user?.id, isInitialLoad]);
 
+  // Reset apenas quando troca de conversa
   useEffect(() => {
-    // Reset do carregamento inicial quando muda de conversa
     setIsInitialLoad(true);
     setMessages([]);
+  }, [conversaId]);
 
+  // Polling separado
+  useEffect(() => {
+    if (!conversaId) return;
+
+    // Carrega mensagens inicialmente
     carregarMensagens();
 
-    // Atualiza mensagens a cada 10 segundos (reduzido para evitar sobrecarga)
-    // Só atualiza se houver conversaId e usuário não está digitando
-    if (conversaId) {
-      const interval = setInterval(() => {
-        if (!isTyping && !isSending) {
-          carregarMensagens();
-        }
-      }, 10000); // Aumentado de 5s para 10s
-      return () => clearInterval(interval);
-    }
+    // Polling mais lento (15s) e só se não estiver digitando/enviando
+    const interval = setInterval(() => {
+      if (!isTyping && !isSending) {
+        carregarMensagens();
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, [conversaId, carregarMensagens, isTyping, isSending]);
 
   const handleSendMessage = async () => {
@@ -161,6 +152,7 @@ const ChatWindow = ({
       await enviarMensagem(dados);
 
       setInputValue('');
+      setIsTyping(false);
 
       toast({
         title: 'Mensagem enviada!',
@@ -169,9 +161,10 @@ const ChatWindow = ({
         isClosable: true,
       });
 
-      // Aguarda um pouco e recarrega uma única vez
-      await new Promise(resolve => setTimeout(resolve, 500));
-      carregarMensagens();
+      // Recarrega mensagens imediatamente
+      console.log('🔄 Recarregando mensagens após envio...');
+      setIsInitialLoad(false); // Não mostra loading
+      await carregarMensagens();
 
     } catch (error: any) {
       console.error('Erro ao enviar mensagem:', error);

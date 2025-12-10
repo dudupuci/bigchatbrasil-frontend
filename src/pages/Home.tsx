@@ -79,11 +79,36 @@ const Home = () => {
         conversaId: conv.conversaId,
       }));
 
+      console.log('🔍 Conversas carregadas:', conversasFormatadas);
+
       setContacts(conversasFormatadas);
+
+      // Atualiza selectedContact SOMENTE se ele já existir e encontrar correspondência
+      setSelectedContact(prevSelected => {
+        if (!prevSelected) {
+          console.log('ℹ️ Nenhum contato selecionado anteriormente');
+          return null;
+        }
+
+        console.log('🔍 Tentando atualizar selectedContact:', prevSelected);
+
+        // Encontra o contato atualizado pela conversaId
+        const contatoAtualizado = conversasFormatadas.find(
+          c => c.conversaId === prevSelected.conversaId
+        );
+
+        if (contatoAtualizado) {
+          console.log('✅ Contato atualizado encontrado:', contatoAtualizado);
+          return contatoAtualizado;
+        } else {
+          console.log('⚠️ Contato não encontrado, mantendo o anterior:', prevSelected);
+          return prevSelected;
+        }
+      });
     } catch (error: any) {
-      console.error('Erro ao carregar conversas:', error);
+      console.error('❌ Erro ao carregar conversas:', error);
     }
-  }, []); // Remove todas as dependências para evitar re-renders
+  }, []);
 
   const formatarDataHora = (dataHora: string): string => {
     const data = new Date(dataHora);
@@ -111,8 +136,8 @@ const Home = () => {
     // Carrega conversas ao montar o componente
     carregarConversas();
 
-    // Atualiza a lista a cada 10 segundos (polling reduzido para evitar travamento)
-    const interval = setInterval(carregarConversas, 10000);
+    // Atualiza a lista a cada 20 segundos (reduzido ainda mais)
+    const interval = setInterval(carregarConversas, 20000);
 
     // Recarrega conversas quando a janela volta ao foco
     const handleFocus = () => {
@@ -140,6 +165,7 @@ const Home = () => {
   }, [searchTerm, contacts]);
 
   const handleSelectContact = (contact: Contact) => {
+    console.log('👆 Contato selecionado:', contact);
     setSelectedContact(contact);
     setShowChatOnMobile(true);
   };
