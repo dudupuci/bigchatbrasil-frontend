@@ -35,7 +35,7 @@ import {
 
 interface Contact {
   id: string;
-  idNumerico: number;
+  idNumerico: string; // UUID
   tipo: 'CLIENTE' | 'EMPRESA';
   nome: string;
   email: string;

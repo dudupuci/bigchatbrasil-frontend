@@ -24,7 +24,7 @@ import {
 } from '../services/mensagemService';
 
 interface Message {
-  id: number;
+  id: string; // UUID
   text: string;
   sender: 'me' | 'other';
   timestamp: Date;
@@ -32,7 +32,7 @@ interface Message {
 
 interface ChatWindowProps {
   contactName: string;
-  contactId: number;
+  contactId: string; // UUID
   contactType: 'CLIENTE' | 'EMPRESA';
   conversaId?: string;
   onBack?: () => void;
@@ -234,20 +234,32 @@ const ChatWindow = ({
               messages.map((message) => (
                 <Flex key={message.id} justify={message.sender === 'me' ? 'flex-end' : 'flex-start'}>
                   <HStack maxW="70%" spacing={2} flexDirection={message.sender === 'me' ? 'row-reverse' : 'row'}>
-                    <Circle size="32px" bg={message.sender === 'me' ? 'blue.500' : 'gray.500'} color="white" fontWeight="bold" fontSize="sm">
+                    <Circle
+                      size="32px"
+                      bg={message.sender === 'me' ? 'blue.500' : 'gray.300'}
+                      color={message.sender === 'me' ? 'white' : 'gray.700'}
+                      fontWeight="bold"
+                      fontSize="sm"
+                    >
                       {message.sender === 'me' ? user?.nome[0].toUpperCase() : contactName[0].toUpperCase()}
                     </Circle>
                     <Box>
                       <Box
-                        bg={message.sender === 'me' ? 'blue.500' : colorMode === 'dark' ? 'gray.700' : 'gray.200'}
-                        color={message.sender === 'me' ? 'white' : 'inherit'}
+                        bg={message.sender === 'me' ? 'blue.500' : colorMode === 'dark' ? 'gray.700' : 'gray.100'}
+                        color={message.sender === 'me' ? 'white' : colorMode === 'dark' ? 'gray.200' : 'gray.700'}
                         px={4}
                         py={2}
                         borderRadius="lg"
+                        boxShadow={message.sender === 'me' ? 'md' : 'sm'}
                       >
                         <Text>{message.text}</Text>
                       </Box>
-                      <Text fontSize="xs" color="gray.500" mt={1}>
+                      <Text
+                        fontSize="xs"
+                        color="gray.500"
+                        mt={1}
+                        textAlign={message.sender === 'me' ? 'right' : 'left'}
+                      >
                         {message.timestamp.toLocaleTimeString('pt-BR', {
                           hour: '2-digit',
                           minute: '2-digit',

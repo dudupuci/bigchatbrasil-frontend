@@ -11,14 +11,14 @@ export interface LoginRequest {
 
 export interface AuthApiResponse {
   sessionId: string;
-  id: number;
+  id: string; // UUID
   nome: string;
   email: string;
   tipo: 'CLIENTE' | 'EMPRESA';
 }
 
 export interface User {
-  id: number;
+  id: string; // UUID
   nome: string;
   email: string;
   tipo: 'CLIENTE' | 'EMPRESA';

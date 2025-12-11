@@ -1,7 +1,7 @@
 import { apiRequest } from './api';
 
 export interface Usuario {
-  id: number;
+  id: string; // UUID
   nome: string;
   email: string;
   tipo: 'CLIENTE' | 'EMPRESA';
@@ -9,7 +9,7 @@ export interface Usuario {
 
 export interface Conversa {
   conversaId: string;
-  outroUsuarioId: number;
+  outroUsuarioId: string; // UUID
   outroUsuarioNome: string;
   outroUsuarioTipo: 'CLIENTE' | 'EMPRESA';
   ultimaMensagem: string;
@@ -18,10 +18,10 @@ export interface Conversa {
 }
 
 export interface Mensagem {
-  id: number;
+  id: string; // UUID
   conversaId: string;
-  remetenteId: number;
-  destinatarioId: number;
+  remetenteId: string; // UUID
+  destinatarioId: string; // UUID
   conteudo: string;
   status: string;
   momentoEnvio: string;
@@ -29,7 +29,7 @@ export interface Mensagem {
 
 export interface EnviarMensagemRequest {
   conversaId?: string;
-  destinatarioId: number;
+  destinatarioId: string; // UUID
   tipoDestinatario: 'CLIENTE' | 'EMPRESA';
   conteudo: string;
   tipo: 'EMAIL' | 'SMS' | 'CHAT_ONLINE';
@@ -39,7 +39,7 @@ export interface EnviarMensagemRequest {
 /**
  * Cria uma conversa entre o usuário logado e outro usuário
  */
-export const criarConversa = async (destinatarioId: number, tipoDestinatario: 'CLIENTE' | 'EMPRESA'): Promise<{ conversaId: string; message: string }> => {
+export const criarConversa = async (destinatarioId: string, tipoDestinatario: 'CLIENTE' | 'EMPRESA'): Promise<{ conversaId: string; message: string }> => {
   return apiRequest('/mensagens/conversas', {
     method: 'POST',
     headers: {
