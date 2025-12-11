@@ -121,12 +121,12 @@ const ChatWindow = ({
     // Carrega mensagens inicialmente
     carregarMensagens();
 
-    // Polling mais lento (15s) e só se não estiver digitando/enviando
+    // Polling mais rápido (3s) e só se não estiver digitando/enviando
     const interval = setInterval(() => {
       if (!isTyping && !isSending) {
         carregarMensagens();
       }
-    }, 15000);
+    }, 3000); // Reduzido para 3 segundos
 
     return () => clearInterval(interval);
   }, [conversaId, carregarMensagens, isTyping, isSending]);

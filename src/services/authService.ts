@@ -53,15 +53,15 @@ export const authService = {
 };
 
 export const getSessionId = (): string | null => {
-  return localStorage.getItem('@bcb:sessionId');
+  return sessionStorage.getItem('@bcb:sessionId');
 };
 
 export const setSessionId = (sessionId: string): void => {
-  localStorage.setItem('@bcb:sessionId', sessionId);
+  sessionStorage.setItem('@bcb:sessionId', sessionId);
 };
 
 export const removeSessionId = (): void => {
-  localStorage.removeItem('@bcb:sessionId');
+  sessionStorage.removeItem('@bcb:sessionId');
 };
 
 export const getAuthHeaders = (): HeadersInit => {

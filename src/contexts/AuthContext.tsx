@@ -18,10 +18,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Recuperar dados do localStorage ao inicializar
-    const storedUser = localStorage.getItem('@bcb:user');
-    const storedSessionId = localStorage.getItem('@bcb:sessionId');
-    
+    // Recuperar dados do sessionStorage (isolado por aba) ao inicializar
+    const storedUser = sessionStorage.getItem('@bcb:user');
+    const storedSessionId = sessionStorage.getItem('@bcb:sessionId');
+
     if (storedUser && storedSessionId) {
       setUser(JSON.parse(storedUser));
       setSessionId(storedSessionId);
@@ -31,19 +31,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = (userData: User, userSessionId: string) => {
     setUser(userData);
     setSessionId(userSessionId);
-    localStorage.setItem('@bcb:user', JSON.stringify(userData));
-    localStorage.setItem('@bcb:sessionId', userSessionId);
+    // Usa sessionStorage para isolar entre abas
+    sessionStorage.setItem('@bcb:user', JSON.stringify(userData));
+    sessionStorage.setItem('@bcb:sessionId', userSessionId);
   };
 
   const logout = () => {
     setUser(null);
     setSessionId(null);
-    localStorage.removeItem('@bcb:user');
+    sessionStorage.removeItem('@bcb:user');
     removeSessionId();
   };
 
   const getSessionId = () => {
-    return sessionId || localStorage.getItem('@bcb:sessionId');
+    return sessionId || sessionStorage.getItem('@bcb:sessionId');
   };
 
   return (

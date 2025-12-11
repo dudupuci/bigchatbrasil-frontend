@@ -136,8 +136,8 @@ const Home = () => {
     // Carrega conversas ao montar o componente
     carregarConversas();
 
-    // Atualiza a lista a cada 20 segundos (reduzido ainda mais)
-    const interval = setInterval(carregarConversas, 20000);
+    // Atualiza a lista a cada 10 segundos
+    const interval = setInterval(carregarConversas, 10000);
 
     // Recarrega conversas quando a janela volta ao foco
     const handleFocus = () => {
