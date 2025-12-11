@@ -129,7 +129,7 @@ const Home = () => {
 
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate('/auth/login');
       return;
     }
 

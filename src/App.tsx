@@ -7,8 +7,8 @@ import Home from './pages/Home';
 const App = () => {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/" element={<Navigate to="/auth/login" replace />} />
+      <Route path="/auth/login" element={<Login />} />
       <Route path="/cadastro" element={<Cadastro />} />
       <Route path="/home" element={<Home />} />
       <Route path="/chat" element={<Chat />} />

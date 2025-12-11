@@ -140,7 +140,7 @@ const Cadastro = () => {
                 duration: 4000,
                 isClosable: true,
             });
-            navigate('/login');
+            navigate('/auth/login');
         } catch (error) {
             toast({
                 title: 'Erro no cadastro',
@@ -381,7 +381,7 @@ const Cadastro = () => {
                     <Box textAlign="center">
                         <Text color="gray.500">
                             Já tem uma conta?{' '}
-                            <Link color="brand.500" fontWeight="bold" onClick={() => navigate('/login')}>
+                            <Link color="brand.500" fontWeight="bold" onClick={() => navigate('/auth/login')}>
                                 Faça login
                             </Link>
                         </Text>
